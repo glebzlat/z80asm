@@ -238,3 +238,52 @@ res 0, (ix+1); DD CB 01 86
 res 7, (ix+1); DD CB 01 BE
 res 0, (iy+1); FD CB 01 86
 res 7, (iy+1); FD CB 01 BE
+jp 0x1020; C3 20 10
+jp nz, 0x1020; C2 20 10
+jp z, 0x1020; CA 20 10
+jp nc, 0x1020; D2 20 10
+jp c, 0x1020; DA 20 10
+jp po, 0x1020; E2 20 10
+jp pe, 0x1020; EA 20 10
+jp p, 0x1020; F2 20 10
+jp m, 0x1020; FA 20 10
+jr 0x10; 18 0E
+jr -0x10; 18 EE
+jr c, 0x10; 38 0E
+jr nc, 0x10; 30 0E
+jr z, 0x10; 28 0E
+jr nz, 0x10; 20 0E
+jp (hl); E9
+jp (ix); DD E9
+jp (iy); FD E9
+djnz 0x10; 10 0E
+call 0x1020; CD 20 10
+call nz, 0x1020; C4 20 10
+call m, 0x1020; FC 20 10
+ret; C9
+ret nz; C0
+ret m; F8
+reti; ED 4D
+retn; ED 45
+rst 0x00; C7
+rst 0x08; CF
+rst 0x10; D7
+rst 0x18; DF
+rst 0x20; E7
+rst 0x28; EF
+rst 0x30; F7
+rst 0x38; FF
+in a, (0x10); DB 10
+in b, (c); ED 40
+in a, (c); ED 78
+ini; ED A2
+inir; ED B2
+ind; ED AA
+indr; ED BA
+out (0x10), a; D3 10
+out (c), b; ED 41
+out (c), a; ED 79
+outi; ED A3
+otir; ED B3
+outd; ED AB
+otdr; ED BB
