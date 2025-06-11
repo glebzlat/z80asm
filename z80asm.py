@@ -968,7 +968,7 @@ class Z80AsmParser:
                 pos1 = self.mark()
                 if self.expect(r"[+-]"):
                     self.reset(pos1)
-                    if d := self.expect_integer(8):
+                    if (d := self.expect_integer(8)) is not None:
                         if self.expect(r"\)"):
                             return self.parseinfo(Operand(OperandKind.IXDAddr, d), pos)
         self.reset(pos)
@@ -984,7 +984,7 @@ class Z80AsmParser:
                 pos1 = self.mark()
                 if self.expect(r"[+-]"):
                     self.reset(pos1)
-                    if d := self.expect_integer(8):
+                    if (d := self.expect_integer(8)) is not None:
                         if self.expect(r"\)"):
                             return self.parseinfo(Operand(OperandKind.IYDAddr, d), pos)
         self.reset(pos)
@@ -1102,7 +1102,7 @@ class Z80AsmParser:
     def parse_i8_op(self) -> Optional[Operand]:
         """Parse 8 bit integer into an Int Operand"""
         pos = self.mark()
-        if i := self.expect_integer(8):
+        if (i := self.expect_integer(8)) is not None:
             return self.parseinfo(Operand(OperandKind.Int8, i), pos)
         self.reset(pos)
         return None
@@ -1111,7 +1111,7 @@ class Z80AsmParser:
     def parse_i16_op(self) -> Optional[Operand]:
         """Parse 16 bit integer into an Int Operand"""
         pos = self.mark()
-        if i := self.expect_integer(16):
+        if (i := self.expect_integer(16)) is not None:
             return self.parseinfo(Operand(OperandKind.Int16, i), pos)
         self.reset(pos)
         return None
@@ -1120,7 +1120,7 @@ class Z80AsmParser:
     def parse_bit_pos(self) -> Optional[Operand]:
         """Parse bit position integer (from 0 to 7 inclusively)"""
         pos = self.mark()
-        if i := self.expect_integer(8):
+        if (i := self.expect_integer(8)) is not None:
             if i < 0 or i > 7:
                 self.error("bit position must be in range [0, 7], got {}", i)
             return self.parseinfo(Operand(OperandKind.Int8, i), pos)
@@ -1131,7 +1131,7 @@ class Z80AsmParser:
     def parse_page0_mem_loc(self) -> Optional[Operand]:
         """Parse page0 memory location integer"""
         pos = self.mark()
-        if i := self.expect_integer(8):
+        if (i := self.expect_integer(8)) is not None:
             return self.parseinfo(Operand(OperandKind.MemLoc, i), pos)
         self.reset(pos)
         return None
@@ -1204,7 +1204,7 @@ class Z80AsmParser:
         """Parses n-bit integer in decimal, hexadecimal, octal, or binary format"""
         pos = self.mark()
         negative = False
-        pattern, base = r"[1-9][0-9]*", 10
+        pattern, base = r"[0-9]+", 10
         if m := self.expect(r"[+-]"):
             negative = m[0] == "-"
         if m := self.expect(r"0x"):
