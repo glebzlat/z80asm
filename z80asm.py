@@ -254,6 +254,8 @@ class Z80AsmParser:
         ADD = lambda: self.parse_addr_combine(self.parse_i16_op)
         IX = self.parse_ix
         IY = self.parse_iy
+        AIX = lambda: self.parse_addr_combine(IX)
+        AIY = lambda: self.parse_addr_combine(IY)
         IXD = self.parse_ixd_addr
         IYD = self.parse_iyd_addr
         AR = lambda: self.parse_register_name("a")
@@ -274,7 +276,7 @@ class Z80AsmParser:
         PML = self.parse_page0_mem_loc
 
         IOA = lambda: self.parse_addr_combine(self.parse_i8_op)
-        IOAC = lambda: self.parse_addr_combine(self.parse_register_name("c"))
+        IOAC = lambda: self.parse_addr_combine(lambda: self.parse_register_name("c"))
 
         # Parselet   Expression   Convertion
         # IXD        (ix+<int>)   int
@@ -600,9 +602,9 @@ class Z80AsmParser:
                 (CFF, I16): D(3, lambda f, n: (0xc2 | (f << 3), n[0], n[1])),
                 (CFF, LBLA): D(3, lambda f, n: (0xc2 | (f << 3), n[0], n[1])),
 
-                (HL,): (0xe9,),
-                (IX,): (0xdd, 0xe9),
-                (IY,): (0xfd, 0xe9),
+                (AHL,): (0xe9,),
+                (AIX,): (0xdd, 0xe9),
+                (AIY,): (0xfd, 0xe9),
             },
             _("JR"): {
                 (I8,): D(2, lambda n: (0x18, n - 2)),
@@ -625,8 +627,8 @@ class Z80AsmParser:
                 (CFF, I16): D(3, lambda f, n: (0xc4 | (f << 3), n[0], n[1]))
             },
             _("RET"): {
-                (): (0xc9,),
                 (CFF,): D(1, lambda f: (0xc0 | (f << 3),)),
+                (): (0xc9,),
             },
             _("RETI"): {
                 (): (0xed, 0x4d),
@@ -638,7 +640,7 @@ class Z80AsmParser:
                 (PML,): D(1, lambda n: (0xc7 | (n << 3),))
             },
             _("IN"): {
-                (AR, IOA): D(2, lambda _, n: (0xdb, n)),
+                (AR, IOA): D(2, lambda _, n: (0xdb, n[0])),
                 (REG, IOAC): D(2, lambda r, _: (0xed, 0x40 | (r << 3)))
             },
             _("INI"): {
@@ -654,8 +656,8 @@ class Z80AsmParser:
                 (): (0xed, 0xba),
             },
             _("OUT"): {
-                (IOA, AR): D(2, lambda n, _: (0xd3, n)),
-                (IOAC, AR): D(2, lambda _, r: (0xed, 0x41 | (r << 3)))
+                (IOA, AR): D(2, lambda n, _: (0xd3, n[0])),
+                (IOAC, REG): D(2, lambda _, r: (0xed, 0x41 | (r << 3)))
             },
             _("OUTI"): {
                 (): (0xed, 0xa3),
