@@ -4,6 +4,7 @@ ld b, a; 47
 ld c, h; 4C
 ld a, 42; 3E 2A
 ld b, 0x1C; 06 1C
+ld b, 0x00; 06 00
 ld a, (hl); 7E
 ld l, (hl); 6E
 ld a, (ix+1); DD 7E 01
@@ -183,3 +184,57 @@ rlc a; CB 07
 rlc (hl); CB 06
 rlc (ix-1); DD CB FF 06
 rlc (iy-1); FD CB FF 06
+rl b; CB 10
+rl (hl); CB 16
+rl (ix-1); DD CB FF 16
+rl (iy-1); FD CB FF 16
+rrc c; CB 09
+rrc (hl); CB 0E
+rrc (ix-1); DD CB FF 0E
+rrc (iy-1); FD CB FF 0E
+rr c; CB 09
+rr d; CB 0A
+rr (hl); CB 1E
+rr (ix-1); DD CB FF 1E
+rr (iy-1); FD CB FF 1E
+sla e; CB 23
+sla (hl); CB 26
+sla (ix+1); DD CB 01 26
+sla (iy+1); FD CB 01 26
+sra h; CB 2C
+sra (hl); CB 2E
+sra (ix+1); DD CB 01 2E
+sra (iy+1); FD CB 01 2E
+srl l; CB 3D
+srl (hl); CB 3E
+srl (ix+1); DD CB 01 3E
+srl (iy+1); FD CB 01 3E
+rld; ED 6F
+rrd; ED 67
+bit 0, a; CB 47
+bit 1, a; CB 4F
+bit 2, a; CB 57
+bit 7, a; CB 7F
+bit 0, (hl); CB 46
+bit 7, (hl); CB 7E
+bit 0, (ix+1); DD CB 01 46
+bit 7, (ix+1); DD CB 01 7E
+bit 0, (iy+1); FD CB 01 46
+bit 7, (iy+1); FD CB 01 7E
+set 0, a; CB C7
+set 0, b; CB C0
+set 7, a; CB FF
+set 0, (hl); CB C6
+set 7, (hl); CB FE
+set 0, (ix+1); DD CB 01 C6
+set 7, (ix+1); DD CB 01 FE
+set 0, (iy+1); FD CB 01 C6
+set 7, (iy+1); FD CB 01 FE
+res 0, h; CB 84
+res 7, h; CB BC
+res 0, (hl); CB 86
+res 7, (hl); CB BE
+res 0, (ix+1); DD CB 01 86
+res 7, (ix+1); DD CB 01 BE
+res 0, (iy+1); FD CB 01 86
+res 7, (iy+1); FD CB 01 BE
