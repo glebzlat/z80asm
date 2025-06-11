@@ -1675,6 +1675,10 @@ class Z80AsmCompiler:
             if (val := self.MEMLOCS.get(op.value)) is not None:
                 return val
             self.error(op, "invalid Page 0 Memory Location")
+            # Compiler will throw an error anyway, but we need to return
+            # something here. Maybe it will be a good idea to stop calling
+            # handlers if there is at least one error.
+            return 0
 
         dct = {
             OperandKind.Int16: lambda op: self.i16top(op.value),
