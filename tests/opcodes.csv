@@ -1,0 +1,185 @@
+instruction; opcode
+ld a, b; 78
+ld b, a; 47
+ld c, h; 4C
+ld a, 42; 3E 2A
+ld b, 0x1C; 06 1C
+ld a, (hl); 7E
+ld l, (hl); 6E
+ld a, (ix+1); DD 7E 01
+ld b, (ix-1); DD 46 FF
+ld c, (ix-0x42); DD 4E BE
+ld a, (iy+1); FD 7E 01
+ld b, (iy-1); FD 46 FF
+ld (hl), a; 77
+ld (hl), h; 74
+ld (ix+1), e; DD 73 01
+ld (ix-1), h; DD 74 FF
+ld (iy+1), e; FD 73 01
+ld (iy-1), h; FD 74 FF
+ld (hl), 42; 36 2A
+ld (ix+1), 42; DD 36 01 2A
+ld (iy+1), 42; FD 36 01 2A
+ld a, (bc); 0A
+ld a, (de); 1A
+ld a, (0xbaca); 3A CA BA
+ld (bc), a; 02
+ld (de), a; 12
+ld (0xbaca), a; 32 CA BA
+ld a, i; ED 57
+ld a, r; ED 5F
+ld i, a; ED 47
+ld r, a; ED 4F
+ld bc, 0x1234; 01 34 12
+ld sp, 0b01100101_00110100; 31 34 65
+ld ix, 0xbaca; DD 21 CA BA
+ld iy, 0xbaca; FD 21 CA BA
+ld hl, (0x1234); 2A 34 12
+ld bc, (0x1234); ED 4B 34 12
+ld sp, (0x1234); ED 7B 34 12
+ld ix, (0x1234); DD 2A 34 12
+ld iy, (0x1234); FD 2A 34 12
+ld (0x1020), hl; 22 20 10
+ld (0x1020), bc; ED 43 20 10
+ld (0x1020), ix; DD 22 20 10
+ld (0x1020), iy; FD 22 20 10
+ld sp, hl; F9
+ld sp, ix; DD F9
+ld sp, iy; FD F9
+push bc; C5
+push de; D5
+push hl; E5
+push af; F5
+push ix; DD E5
+push iy; FD E5
+pop bc; C1
+pop de; D1
+pop hl; E1
+pop af; F1
+pop ix; DD E1
+pop iy; FD E1
+ex de, hl; EB
+ex af; 08
+exx; D9
+ex (sp), hl; E3
+ex (sp), ix; DD E3
+ex (sp), iy; FD E3
+ldi; ED A0
+ldir; ED B0
+ldd; ED A8
+lddr; ED B8
+cpi; ED A1
+cpir; ED B1
+cpd; ED A9
+cpdr; ED B9
+add a, a; 87
+add a, l; 85
+add a, 1; C6 01
+add a, (hl); 86
+add a, (ix+1); DD 86 01
+add a, (iy+1); FD 86 01
+adc a, a; 8F
+adc a, 0x10; CE 10
+adc a, (hl); 8E
+adc a, (ix+10); DD 8E 0A
+adc a, (iy+10); FD 8E 0A
+sub l; 95
+sub 0x10; D6 10
+sub (hl); 96
+sub (ix+10); DD 96 0A
+sub (iy+10); FD 96 0A
+sbc a, a; 9F
+sbc a, 0x10; DE 10
+sbc a, (hl); 9E
+sbc a, (ix+0x10); DD 9E 10
+sbc a, (iy+0x10); FD 9E 10
+and a; A7
+and 0x10; E6 10
+and (hl); A6
+and (ix+0x10); DD A6 10
+and (iy+0b1000); FD A6 08
+or b; B0
+or c; B1
+or 0x10; F6 10
+or (hl); B6
+or (ix-1); DD B6 FF
+or (iy-1); FD B6 FF
+xor d; AA
+xor e; AB
+xor 0x10; EE 10
+xor (hl); AE
+xor (ix-1); DD AE FF
+xor (iy-1); FD AE FF
+cp h; BC
+cp l; BD
+cp 0x10; FE 10
+cp (hl); BE
+cp (ix-1); DD BE FF
+cp (iy-1); FD BE FF
+inc a; 3C
+inc b; 04
+inc (hl); 34
+inc (ix-1); DD 34 FF
+inc (iy-1); FD 34 FF
+dec c; 0D
+dec d; 15
+dec (hl); 35
+dec (ix-1); DD 35 FF
+dec (iy-1); FD 35 FF
+daa; 27
+cpl; 2F
+neg; ED 44
+ccf; 3F
+scf; 37
+nop; 00
+halt; 76
+di; F3
+ei; FB
+im 0; ED 46
+im 1; ED 56
+im 2; ED 5E
+add hl, bc; 09
+add hl, de; 19
+add hl, hl; 29
+add hl, sp; 39
+adc hl, bc; ED 4A
+adc hl, de; ED 5A
+adc hl, hl; ED 6A
+adc hl, sp; ED 7A
+sbc hl, bc; ED 42
+sbc hl, de; ED 52
+sbc hl, hl; ED 62
+add ix, bc; DD 09
+add ix, de; DD 19
+add ix, ix; DD 29
+add ix, sp; DD 39
+add iy, bc; FD 09
+add iy, de; FD 19
+add iy, iy; FD 29
+add iy, sp; FD 39
+inc bc; 03
+inc de; 13
+inc hl; 23
+inc sp; 33
+inc ix; DD 23
+inc iy; FD 23
+dec bc; 0B
+dec de; 1B
+dec hl; 2B
+dec sp; 3B
+dec ix; DD 2B
+dec iy; FD 2B
+rlca; 07
+rla; 17
+rrca; 0F
+rra; 1F
+rlc b; CB 00
+rlc c; CB 01
+rlc d; CB 02
+rlc e; CB 03
+rlc h; CB 04
+rlc l; CB 05
+rlc a; CB 07
+rlc (hl); CB 06
+rlc (ix-1); DD CB FF 06
+rlc (iy-1); FD CB FF 06
