@@ -1,0 +1,77 @@
+instruction; opcode
+ld ixh, a; DD 67
+ld ixh, b; DD 60
+ld ixh, c; DD 61
+ld ixh, d; DD 62
+ld ixh, e; DD 63
+ld ixh, ixh; DD 64
+ld ixh, ixl; DD 65
+ld iyh, a; FD 67
+ld iyh, b; FD 60
+ld iyh, c; FD 61
+ld iyh, d; FD 62
+ld iyh, e; FD 63
+ld iyh, iyh; FD 64
+ld iyh, iyl; FD 65
+sll a; CB 37
+sll b; CB 30
+sll c; CB 31
+sll d; CB 32
+sll e; CB 33
+sll h; CB 34
+sll l; CB 35
+sll (hl); CB 36
+sll (ix+1); DD CB 01 36
+sll (ix+1), a; DD CB 01 37
+sll (ix+1), b; DD CB 01 30
+sll (iy+1); FD CB 01 36
+sll (iy+1), a; FD CB 01 37
+sll (iy+1), b; FD CB 01 30
+in (c); ED 70
+in (c), 0; ED 71
+rlc (ix+0x10), a; DD CB 10 07
+rlc (ix+0x10), b; DD CB 10 00
+rlc (ix+0x10), c; DD CB 10 01
+rlc (ix+0x10), d; DD CB 10 02
+rlc (ix+0x10), e; DD CB 10 03
+rlc (ix+0x10), h; DD CB 10 04
+rlc (ix+0x10), l; DD CB 10 05
+rlc (iy+0x10), a; FD CB 10 07
+rlc (iy+0x10), b; FD CB 10 00
+rlc (iy+0x10), c; FD CB 10 01
+rlc (iy+0x10), d; FD CB 10 02
+rlc (iy+0x10), e; FD CB 10 03
+rlc (iy+0x10), h; FD CB 10 04
+rlc (iy+0x10), l; FD CB 10 05
+set 0, (ix+0x10), a; DD CB 10 C7
+set 0, (ix+0x10), b; DD CB 10 C0
+set 1, (ix+0x10), a; DD CB 10 CF
+set 1, (ix+0x10), b; DD CB 10 C8
+set 2, (ix+0x10), a; DD CB 10 D7
+set 2, (ix+0x10), b; DD CB 10 D0
+set 3, (ix+0x10), a; DD CB 10 DF
+set 3, (ix+0x10), b; DD CB 10 D8
+set 4, (ix+0x10), a; DD CB 10 E7
+set 4, (ix+0x10), b; DD CB 10 E0
+set 5, (ix+0x10), a; DD CB 10 EF
+set 5, (ix+0x10), b; DD CB 10 E8
+set 6, (ix+0x10), a; DD CB 10 F7
+set 6, (ix+0x10), b; DD CB 10 F0
+set 7, (ix+0x10), a; DD CB 10 FF
+set 7, (ix+0x10), b; DD CB 10 F8
+set 0, (iy+0x10), a; FD CB 10 C7
+set 0, (iy+0x10), b; FD CB 10 C0
+set 1, (iy+0x10), a; FD CB 10 CF
+set 1, (iy+0x10), b; FD CB 10 C8
+set 2, (iy+0x10), a; FD CB 10 D7
+set 2, (iy+0x10), b; FD CB 10 D0
+set 3, (iy+0x10), a; FD CB 10 DF
+set 3, (iy+0x10), b; FD CB 10 D8
+set 4, (iy+0x10), a; FD CB 10 E7
+set 4, (iy+0x10), b; FD CB 10 E0
+set 5, (iy+0x10), a; FD CB 10 EF
+set 5, (iy+0x10), b; FD CB 10 E8
+set 6, (iy+0x10), a; FD CB 10 F7
+set 6, (iy+0x10), b; FD CB 10 F0
+set 7, (iy+0x10), a; FD CB 10 FF
+set 7, (iy+0x10), b; FD CB 10 F8

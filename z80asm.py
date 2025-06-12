@@ -36,6 +36,11 @@ class OperandKind(Enum):
     Char = auto()
     String = auto()
 
+    IXH = auto()
+    IXL = auto()
+    IYH = auto()
+    IYL = auto()
+
 
 class Opcode(Enum):
     LD = auto()
@@ -105,6 +110,7 @@ class Opcode(Enum):
     OTIR = auto()
     OUTD = auto()
     OTDR = auto()
+    SLL = auto()
 
 
 class DirectiveKind(Enum):
@@ -230,6 +236,10 @@ class Z80AsmParser:
         instruction_bytes: int
         op_bytes: Callable
 
+    @dataclass
+    class Undocumented:
+        encoder: Z80AsmParser.InstructionData | tuple[int, ...]
+
     def definitions(self):
         """Instruction and directive definitions"""
 
@@ -237,6 +247,7 @@ class Z80AsmParser:
         _ = lambda name: Opcode[name].name
         S = lambda s: lambda: self.parse_int8_literal(s)
         D = self.InstructionData
+        U = self.Undocumented
 
         REG = self.parse_register
         I8 = self.parse_i8_op
@@ -259,6 +270,10 @@ class Z80AsmParser:
         IXD = self.parse_ixd_addr
         IYD = self.parse_iyd_addr
         AR = lambda: self.parse_register_name("a")
+        BR = lambda: self.parse_register_name("b")
+        CR = lambda: self.parse_register_name("c")
+        DR = lambda: self.parse_register_name("d")
+        ER = lambda: self.parse_register_name("e")
         IR = lambda: self.parse_register_name("i")
         RR = lambda: self.parse_register_name("r")
         REP = self.parse_regpair
@@ -277,6 +292,11 @@ class Z80AsmParser:
 
         IOA = lambda: self.parse_addr_combine(self.parse_i8_op)
         IOAC = lambda: self.parse_addr_combine(lambda: self.parse_register_name("c"))
+
+        IXH = self.parse_ixh
+        IXL = self.parse_ixl
+        IYH = self.parse_iyh
+        IYL = self.parse_iyl
 
         # Parselet   Expression   Convertion
         # IXD        (ix+<int>)   int
@@ -339,6 +359,24 @@ class Z80AsmParser:
                 (IX, LBLA): D(4, lambda _, n: (0xdd, 0x21, n[0], n[1])),
                 (IY, LBLA): D(4, lambda _, n: (0xfd, 0x21, n[0], n[1])),
                 (HL, LBLA): D(3, lambda _, n: (0x2a, n[0], n[1])),
+
+                # Undoc LD instructions. From Undocumented Z80 documented:
+                # Note LD IXl,IYl is not possible: only IX or IY is accessed in one instruction,
+                # never both.
+                (IXH, AR): U((0xdd, 0x67)),
+                (IXH, BR): U((0xdd, 0x60)),
+                (IXH, CR): U((0xdd, 0x61)),
+                (IXH, DR): U((0xdd, 0x62)),
+                (IXH, ER): U((0xdd, 0x63)),
+                (IXH, IXH): U((0xdd, 0x64)),
+                (IXH, IXL): U((0xdd, 0x65)),
+                (IYH, AR): U((0xfd, 0x67)),
+                (IYH, BR): U((0xfd, 0x60)),
+                (IYH, CR): U((0xfd, 0x61)),
+                (IYH, DR): U((0xfd, 0x62)),
+                (IYH, ER): U((0xfd, 0x63)),
+                (IYH, IYH): U((0xfd, 0x64)),
+                (IYH, IYL): U((0xfd, 0x65)),
             },
             _("PUSH"): {
                 (BC,): (0xc5,),
@@ -533,6 +571,10 @@ class Z80AsmParser:
             _("RLC"): {
                 (REG,): D(2, lambda r: (0xcb, 0x00 | r)),
                 (AHL,): (0xcb, 0x06),
+
+                (IXD, REG): U(D(4, lambda d, r: (0xdd, 0xcb, d, 0x00 | r))),
+                (IYD, REG): U(D(4, lambda d, r: (0xfd, 0xcb, d, 0x00 | r))),
+
                 (IXD,): D(4, lambda d: (0xdd, 0xcb, d, 0x06)),
                 (IYD,): D(4, lambda d: (0xfd, 0xcb, d, 0x06)),
             },
@@ -586,6 +628,9 @@ class Z80AsmParser:
                 (BIT, IYD): D(4, lambda b, d: (0xfd, 0xcb, d, 0x46 | (b << 3))),
             },
             _("SET"): {
+                (BIT, IXD, REG): U(D(4, lambda b, d, r: (0xdd, 0xcb, d, 0xc0 | (b << 3) | r))),
+                (BIT, IYD, REG): U(D(4, lambda b, d, r: (0xfd, 0xcb, d, 0xc0 | (b << 3) | r))),
+
                 (BIT, REG): D(2, lambda b, r: (0xcb, 0xc0 | (b << 3) | r)),
                 (BIT, AHL): D(2, lambda b, _: (0xcb, 0xc6 | (b << 3))),
                 (BIT, IXD): D(4, lambda b, d: (0xdd, 0xcb, d, 0xc6 | (b << 3))),
@@ -642,7 +687,9 @@ class Z80AsmParser:
             },
             _("IN"): {
                 (AR, IOA): D(2, lambda _, n: (0xdb, n[0])),
-                (REG, IOAC): D(2, lambda r, _: (0xed, 0x40 | (r << 3)))
+                (REG, IOAC): D(2, lambda r, _: (0xed, 0x40 | (r << 3))),
+                (IOAC, S("0")): U((0xed, 0x71)),
+                (IOAC,): U((0xed, 0x70))
             },
             _("INI"): {
                 (): (0xed, 0xa2),
@@ -671,6 +718,15 @@ class Z80AsmParser:
             },
             _("OTDR"): {
                 (): (0xed, 0xbb)
+            },
+
+            _("SLL"): {
+                (REG,): U(D(2, lambda r: (0xcb, 0x30 | r))),
+                (AHL,): U(D(2, lambda _: (0xcb, 0x36))),
+                (IXD, REG): U(D(4, lambda d, r: (0xdd, 0xcb, d, 0x30 | r))),
+                (IXD,): U(D(4, lambda d: (0xdd, 0xcb, d, 0x36))),
+                (IYD, REG): U(D(4, lambda d, r: (0xfd, 0xcb, d, 0x30 | r))),
+                (IYD,): U(D(4, lambda d: (0xfd, 0xcb, d, 0x36))),
             }
         }
 
@@ -688,8 +744,10 @@ class Z80AsmParser:
             "0": "\0"
         }
 
-    def __init__(self):
+    def __init__(self, undoc_instructions: bool = False):
         self.definitions()
+
+        self.undoc_instructions = undoc_instructions
 
         # Memo table used for backtracking.
         self.memos = {}
@@ -757,18 +815,23 @@ class Z80AsmParser:
             self.instructions.append(label)
             parse = True
 
-        pos = self.mark()
+        pos = start = self.mark()
         if mnemonic := self.expect_identifier():
             parselet_alts = self.mnemonics.get(mnemonic.upper())
             if parselet_alts is None:
                 self.reset(pos)
                 self.error("unknown mnemonic: {}", mnemonic)
+
             pos = self.mark()
             for (alt, data) in parselet_alts.items():
+                undoc = False
                 # Instruction may have several operand type alternatives,
                 # e.g. `ld <register> <8-bit-int>` and `ld <addr> <register-pair>`,
                 # so backtrack until we found a match or there is no alternative left.
                 if (args := self.parse_instruction_args(mnemonic, alt)) is not None:
+                    if isinstance(data, self.Undocumented):
+                        undoc = True
+                        data = data.encoder
                     if isinstance(data, self.InstructionData):
                         byte_len, op_bytes = data.instruction_bytes, data.op_bytes
                     else:
@@ -779,6 +842,9 @@ class Z80AsmParser:
                     if not self.eol():
                         # Expect that there is nothing left on the line
                         self.error("unexpected text")
+                    if undoc and not self.undoc_instructions:
+                        self.reset(start)
+                        self.error("undocumented instructions disabled")
                     parse = True
                     break
                 self.reset(pos)
@@ -795,7 +861,7 @@ class Z80AsmParser:
             if arg := parselet():
                 if i != last_parselet_idx:
                     if self.eol():
-                        self.error("instruction {} expects {} args", mnemonic, len(parselets))
+                        return None
                     if not self.expect_comma():
                         # Ensure args are separated by comma
                         self.error_from_last_expect()
@@ -1082,6 +1148,38 @@ class Z80AsmParser:
         pos = self.mark()
         if name := self.expect_identifier():
             return self.parseinfo(Operand(OperandKind.RelLabel, name), pos)
+        self.reset(pos)
+        return None
+
+    @memoize
+    def parse_ixh(self) -> Optional[Operand]:
+        pos = self.mark()
+        if self.expect_str("ixh"):
+            return self.parseinfo(Operand(OperandKind.IXH), pos)
+        self.reset(pos)
+        return None
+
+    @memoize
+    def parse_ixl(self) -> Optional[Operand]:
+        pos = self.mark()
+        if self.expect_str("ixl"):
+            return self.parseinfo(Operand(OperandKind.IXL), pos)
+        self.reset(pos)
+        return None
+
+    @memoize
+    def parse_iyh(self) -> Optional[Operand]:
+        pos = self.mark()
+        if self.expect_str("iyh"):
+            return self.parseinfo(Operand(OperandKind.IYH), pos)
+        self.reset(pos)
+        return None
+
+    @memoize
+    def parse_iyl(self) -> Optional[Operand]:
+        pos = self.mark()
+        if self.expect_str("iyl"):
+            return self.parseinfo(Operand(OperandKind.IYL), pos)
         self.reset(pos)
         return None
 
@@ -1577,6 +1675,10 @@ class Z80AsmPrinter:
             OperandKind.Const: handle_label_op,
             OperandKind.Char: handle_char_op,
             OperandKind.String: handle_string_op,
+            OperandKind.IXH: lambda op: self.put("ixh"),
+            OperandKind.IXL: lambda op: self.put("ixl"),
+            OperandKind.IYH: lambda op: self.put("iyh"),
+            OperandKind.IYL: lambda op: self.put("iyl"),
         }
 
         return dct
