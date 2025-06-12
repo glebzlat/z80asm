@@ -1481,6 +1481,7 @@ class Z80AsmPrinter:
                 cont_addr = self.addr + range_end
             else:
                 self.put(" " * 12)
+            self.put(";")
             if isinstance(stmt, Label):
                 self.print_label(stmt)
             elif isinstance(stmt, Instruction):
@@ -1502,7 +1503,10 @@ class Z80AsmPrinter:
         self.put(f"{lbl.name}:")
 
     def print_instruction(self, inst: Instruction):
-        self.put(f"    {inst.opcode.name.lower():<6}")
+        if inst.operands:
+            self.put(f"    {inst.opcode.name.lower():<6}")
+        else:
+            self.put(f"    {inst.opcode.name.lower()}")
         self.print_operands(inst.operands)
 
     def print_directive(self, d: Directive):
