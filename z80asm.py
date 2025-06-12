@@ -1404,9 +1404,6 @@ class Z80AsmLayouter:
             if (addr := labels.get(op.value)) is not None:
                 if op.kind == OperandKind.RelLabel:
                     addr -= inst.addr
-                    if addr > 0:
-                        # Next byte offset
-                        addr += 1
                     if addr > 129 or addr < -126:
                         self.error("label outside relative jump range")
                 op.name = op.value
