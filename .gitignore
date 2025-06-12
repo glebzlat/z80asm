@@ -59,3 +59,6 @@ build/
 
 # Python byte-compiled files
 __pycache__/
+
+# Virtual environment
+.env

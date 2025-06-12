@@ -1,0 +1,138 @@
+# Test format:
+#   - test:
+#       desc: A test description
+#       source: |
+#         An Asm source
+#       expect: |
+#         An expected output lines from the assembler
+#         in the format <hex addr> <hex values>+ ; <mnemonic>
+
+---
+tests:
+  - desc: .org directive changes address
+    source: |
+      .org 0x0010
+          ld a, 0x10
+          halt
+    expect: |
+      0010              ; .org 0x0010
+      0010 3E 10        ;     ld     a, 0x10
+      0012 76           ;     halt
+
+  - desc: Absolute address label
+    source: |
+      .org 0x0000
+          ld a, 0x10
+          jp label
+      .org 0x1000
+      label:
+          ld b, a
+          halt
+    expect: |
+      0000              ; .org 0x0000
+      0000 3E 10        ;     ld     a, 0x10
+      0002 C3 00 10     ;     jp     0x1000
+      1000              ; .org 0x1000
+      1000              ; label:
+      1000 47           ;     ld     b, a
+      1001 76           ;     halt
+
+  - desc: .db directive allows to define sequence of bytes
+    source: |
+      .db 0x10, 0x20, 0x30
+          nop
+      .db 'a', 'b', 'c', 0b00101010
+          nop
+      .db "hello", 0x2A
+          nop
+    expect: |
+      0000 10 20 30     ; .db 0x10, 0x20, 0x30
+      0003 00           ;     nop
+      0004 61 62 63 2A  ; .db 'a', 'b', 'c', 0x2A
+      0008 00           ;     nop
+      0009 68 65 6C 6C  ; .db "hello", 0x2A
+      000D 6F 2A
+      000F 00           ;     nop
+
+  - desc: Jump relative positive (from doc)
+    source: |
+      .org 0x0480
+          jr end
+          nop
+          nop
+          nop
+      end:
+    expect: |
+      0480              ; .org 0x0480
+      0480 18 03        ;     jr     +5
+      0482 00           ;     nop
+      0483 00           ;     nop
+      0484 00           ;     nop
+      0485              ; end:
+
+  - desc: Jump relative negative (from doc)
+    source: |
+      .org 0x047C
+      start:
+          nop
+          nop
+          nop
+          nop
+          jr c, start
+    expect: |
+      047C              ; .org 0x047C
+      047C              ; start:
+      047C 00           ;     nop
+      047D 00           ;     nop
+      047E 00           ;     nop
+      047F 00           ;     nop
+      0480 38 FA        ;     jr     c, -4
+
+  - desc: Relative labels and .db directive (changed example from doc)
+    source: |
+      .org 0x0010
+      start:
+          ld b, 20       ; set up counter
+          ld hl, input   ; set up input buffer pointer
+          ld de, output  ; set up output buffer pointer
+      loop:
+          ld a, (hl)     ; get next byte from input buffer
+          ld (de), a     ; store in output buffer
+          cp '\0'        ; is it a null terminator?
+          jr z, done     ; yes -> finished
+          inc hl         ; increment pointers
+          inc de
+          djnz loop      ; loop back if n bytes < 80
+      done:
+          halt
+
+      .org 0x0800
+      input:
+      .db "Hello World!\0"
+
+      .org 0x1000
+      output:
+    expect: |
+      0010              ; .org 0x0010
+      0010              ; start:
+      0010 06 14        ;     ld     b, 0x14
+      0012 21 00 08     ;     ld     hl, 0x0800
+      0015 11 00 10     ;     ld     de, 0x1000
+      0018              ; loop:
+      0018 7E           ;     ld     a, (hl)
+      0019 12           ;     ld     (de), a
+      001A FE 00        ;     cp     '\0'
+      001C 28 04        ;     jr     z, +6
+      001E 23           ;     inc    hl
+      001F 13           ;     inc    de
+      0020 10 F6        ;     djnz   -8
+      0022              ; done:
+      0022 76           ;     halt
+      0800              ; .org 0x0800
+      0800              ; input:
+      0800 48 65 6C 6C  ; .db "Hello World!\0"
+      0804 6F 20 57 6F
+      0808 72 6C 64 21
+      080C 00
+      1000              ; .org 0x1000
+      1000              ; output:
