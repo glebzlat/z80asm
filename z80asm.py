@@ -601,6 +601,7 @@ class Z80AsmParser:
                 (I16,): D(3, lambda n: (0xc3, n[0], n[1])),
                 (CFF, I16): D(3, lambda f, n: (0xc2 | (f << 3), n[0], n[1])),
                 (CFF, LBLA): D(3, lambda f, n: (0xc2 | (f << 3), n[0], n[1])),
+                (LBLA,): D(3, lambda n: (0xc3, n[0], n[1])),
 
                 (AHL,): (0xe9,),
                 (AIX,): (0xdd, 0xe9),
