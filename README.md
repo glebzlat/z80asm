@@ -12,7 +12,7 @@ This is my attempt in implementing Z80 assembly language compiler.
 ## To Do
 
 - [x] undocumented instructions
-- [ ] `.fill` directive
+- [x] `.fill` directive
 - [ ] `.include` directive
 - [ ] tests
 - [ ] documentation
