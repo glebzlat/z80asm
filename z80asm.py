@@ -14,7 +14,16 @@ from functools import lru_cache
 from itertools import repeat
 
 
+if sys.version_info[:3] >= (3, 11, 0):
+    from typing import assert_never
+else:
+    def assert_never(arg: Any = None):
+        append = f": {arg}" if arg is not None else ""
+        raise ValueError(f"unreachable{append!r}")
+
+
 class OperandKind(Enum):
+    Int = auto()
     Int8 = auto()
     Int16 = auto()
     Reg = auto()
@@ -117,6 +126,7 @@ class DirectiveKind(Enum):
     org = auto()
     equ = auto()
     db = auto()
+    fill = auto()
 
 
 @dataclass
@@ -137,6 +147,7 @@ class Operand(ParseInfo):
     kind: OperandKind
     value: Optional[int | str] = None
     name: Optional[str] = None
+    length: Optional[int] = None
 
     def __str__(self) -> str:
         if self.value:
@@ -731,9 +742,11 @@ class Z80AsmParser:
         }
 
         self.directives = {
-            "org": [self.parse_i16_op],
-            "equ": [self.parse_const, self.parse_i8_op],
-            "db": [self.parse_byte_sequence]
+            "org": [(self.parse_i16_op,)],
+            "equ": [(self.parse_const, self.parse_i8_op)],
+            "db": [(self.parse_byte_sequence,)],
+            "fill": [(self.parse_i16_op, self.parse_i8_op, self.parse_int_op),
+                     (self.parse_i16_op, self.parse_string)]
         }
 
         # Used by parse_char
@@ -881,7 +894,13 @@ class Z80AsmParser:
                     self.reset(pos)
                     self.error("unknown directive: {}", name)
 
-                args = self.parse_directive_args(parselets)
+                args = None
+                for parsing_alt in parselets:
+                    args = self.parse_directive_args(parsing_alt)
+                    if args is not None:
+                        break
+                else:
+                    self.error("unrecognized operands")
 
                 if not self.eol():
                     # Expect that there is nothing left on the line
@@ -894,23 +913,24 @@ class Z80AsmParser:
                 return True
         return False
 
-    def parse_directive_args(self, parselets: list[Callable]) -> list[Any]:
+    def parse_directive_args(self, parselets: tuple[Callable, ...]) -> list[Any]:
         """Parse arguments expected by the directive"""
         args = []
         last_parselet_idx = len(parselets) - 1
         for i, parselet in enumerate(parselets):
             if arg := parselet():
+                if i != last_parselet_idx:
+                    if self.eol():
+                        return None
+                    if not self.expect_comma():
+                        # Ensure arguments are separated by comma
+                        self.error_from_last_expect()
                 if isiterable(arg):
                     args.extend(arg)
                 else:
                     args.append(arg)
             else:
-                # Directives have no alternatives, so if the parselet failed,
-                # throw an error.
-                self.error_from_last_expect()
-            if i != last_parselet_idx and not self.expect_comma():
-                # Ensure arguments are separated by comma
-                self.error_from_last_expect()
+                return None
         return args
 
     @memoize
@@ -1201,7 +1221,7 @@ class Z80AsmParser:
 
     @memoize
     def parse_i8_op(self) -> Optional[Operand]:
-        """Parse 8 bit integer into an Int Operand"""
+        """Parse 8 bit integer into an I8 Operand"""
         pos = self.mark()
         if (i := self.expect_integer(8)) is not None:
             return self.parseinfo(Operand(OperandKind.Int8, i), pos)
@@ -1210,10 +1230,19 @@ class Z80AsmParser:
 
     @memoize
     def parse_i16_op(self) -> Optional[Operand]:
-        """Parse 16 bit integer into an Int Operand"""
+        """Parse 16 bit integer into an I16 Operand"""
         pos = self.mark()
         if (i := self.expect_integer(16)) is not None:
             return self.parseinfo(Operand(OperandKind.Int16, i), pos)
+        self.reset(pos)
+        return None
+
+    @memoize
+    def parse_int_op(self) -> Optional[Operand]:
+        """Parse integer of any bit length into an Int Operand"""
+        pos = self.mark()
+        if (i := self.expect_integer(None)) is not None:
+            return self.parseinfo(Operand(OperandKind.Int, i), pos)
         self.reset(pos)
         return None
 
@@ -1301,8 +1330,11 @@ class Z80AsmParser:
         return args
 
     @memoize
-    def expect_integer(self, bits: int = 8) -> Optional[int]:
-        """Parses n-bit integer in decimal, hexadecimal, octal, or binary format"""
+    def expect_integer(self, bits: int | None = 8) -> Optional[int]:
+        """Parses n-bit integer in decimal, hexadecimal, octal, or binary format
+
+        If bits is None, does not check the bit length of an integer.
+        """
         pos = self.mark()
         negative = False
         pattern, base = r"[0-9]+", 10
@@ -1317,7 +1349,7 @@ class Z80AsmParser:
 
         if m := self.expect(pattern, "integer"):
             val = int(m[0], base) * (-1 if negative else 1)
-            if val.bit_length() > bits:
+            if bits is not None and val.bit_length() > bits:
                 self.reset(pos)
                 pow2bits = ceil_pow2(val.bit_length())
                 self.error(f"expected {bits}-bit integer, got {pow2bits}-bit instead")
@@ -1460,6 +1492,8 @@ class Z80AsmLayouter:
                 inst.length = self.db_length(inst)
                 inst.addr = self.addr
                 self.addr += inst.length
+            elif inst.kind == DirectiveKind.fill:
+                self.layout_fill_directive(inst)
         elif isinstance(inst, Label):
             self.labels[i] = inst
         elif isinstance(inst, Instruction):
@@ -1482,6 +1516,24 @@ class Z80AsmLayouter:
                 length += 1
         return length
 
+    def layout_fill_directive(self, d: Directive):
+        if len(d.operands) == 2:
+            count, string = d.operands
+            assert isinstance(count.value, int) and isinstance(string.value, str)
+            d.length = len(string.value) * count.value
+        elif len(d.operands) == 3:
+            count, size, val = d.operands
+            assert isinstance(count.value, int) and isinstance(size.value, int) and isinstance(val.value, int)
+            val_byte_len, size_byte_len = ceil_pow2(val.value.bit_length()) // 8, size.value
+            if val_byte_len > size_byte_len:
+                self.error(f"value byte length {val_byte_len} is greater than element length {size_byte_len}", d)
+            d.length = count.value * size.value
+            val.length = size.value
+        else:
+            assert_never(d)
+        d.addr = self.addr
+        self.addr += d.length
+
     def assign_label_addrs(self):
         for idx, label in self.labels.items():
             if (addr := self.get_next_addr(idx, self.program)) is not None:
@@ -1494,6 +1546,8 @@ class Z80AsmLayouter:
             if isinstance(inst, Instruction):
                 return inst.addr + inst.length
             if isinstance(inst, Directive):
+                if inst.kind in (DirectiveKind.db, DirectiveKind.fill):
+                    return inst.addr + inst.length
                 return inst.addr
         return 0
 
@@ -1538,10 +1592,13 @@ class Z80AsmLayouter:
 
 
 class Z80AsmPrinter:
-    """Pretty print an assembly program
+    """Pretty print an assembly program.
 
-    If `replace_names` is True, replaces Label and Const references by their
-    values.
+    Attributes:
+        file: Output file.
+        replace_names: Replace Label and Const references by their corresponding values.
+        interpret_literals: Interpret literal chars and strings as sequences of bytes
+        print_long_blocks: Allow long .db and .fill directive blocks to be printed entirely.
     """
 
     ESCCHARS = {
@@ -1555,11 +1612,15 @@ class Z80AsmPrinter:
         self,
         file: TextIO,
         replace_names: bool = False,
-        interpret_literals: bool = False
+        interpret_literals: bool = False,
+        print_long_blocks: bool = False
     ):
+        self.bytes_per_line = 4
+
         self.file = file
         self.replace_names = replace_names
         self.interpret_literals = interpret_literals
+        self.print_long_blocks = print_long_blocks
         self.addr: int = 0
         self.new_line = True
 
@@ -1568,17 +1629,18 @@ class Z80AsmPrinter:
             self.print_statement(inst)
 
     def print_statement(self, stmt: Statement):
-        range_start, range_end = 0, 4
+        range_start, range_end = 0, self.bytes_per_line
         cont_addr = 0
         with self.line():
             self.addr = stmt.addr
             self.put(f"{self.addr:04X}")
+            byte_alignment = self.bytes_per_line * 3
             if not isinstance(stmt, Label) and stmt.encoded is not None:
                 encoded = " ".join(f"{i:02X}" for i in stmt.encoded[range_start:range_end])
-                self.put(f"{encoded:<12}")
+                self.put(f"{encoded:<{byte_alignment}}")
                 cont_addr = self.addr + range_end
             else:
-                self.put(" " * 12)
+                self.put(" " * byte_alignment)
             self.put(";")
             if isinstance(stmt, Label):
                 self.print_label(stmt)
@@ -1587,15 +1649,47 @@ class Z80AsmPrinter:
             elif isinstance(stmt, Directive):
                 self.print_directive(stmt)
         if not isinstance(stmt, Label) and stmt.encoded is not None:
-            if range_end < len(stmt.encoded):
-                range_start, range_end = range_end, range_end + 4
-                while chunk := stmt.encoded[range_start:range_end]:
-                    with self.line():
-                        self.put(f"{cont_addr:04X}")
-                        encoded = " ".join(f"{i:02X}" for i in chunk)
-                        self.put(encoded)
-                        range_start, range_end = range_end, range_end + 4
-                        cont_addr += len(chunk)
+            self.print_byte_block_cont(cont_addr, stmt.encoded)
+
+    def print_byte_block_cont(self, addr: int, encoded: tuple[int, ...]):
+        n_bytes = len(encoded)
+        range_start, range_end = 0, self.bytes_per_line
+        if self.bytes_per_line < n_bytes:
+            # There are more bytes than we can put on one line, so continue printing lines.
+            range_start, range_end = range_end, range_end + self.bytes_per_line
+            # max_bytes is how many bytes we can print if print_long_blocks is not allowed.
+            max_bytes = self.bytes_per_line * 3
+            if not self.print_long_blocks and n_bytes - max_bytes > self.bytes_per_line:
+                # The array is too big to print it all, so skip bytes in the middle, replacing them
+                # with "<N bytes>".
+                chunk = encoded[range_start:range_end]
+                with self.line():
+                    # Put one more line to show that there that many bytes.
+                    self.put(f"{addr:04X}")
+                    s = " ".join(f"{i:02X}" for i in chunk)
+                    self.put(s)
+                    addr += len(chunk)
+                n_bytes = n_bytes - range_end - self.bytes_per_line
+                with self.line():
+                    # Put number of bytes skipped.
+                    self.put(f"{addr:04X} <{n_bytes} bytes>")
+                addr += n_bytes
+                chunk = encoded[-4:]
+                s = " ".join(f"{i:02X}" for i in chunk)
+                with self.line():
+                    # And the final line, the end of an array.
+                    self.put(f"{addr:04X}")
+                    self.put(s)
+                return
+            # There are not many bytes in the array or print_long_blocks is allowed,
+            # so dump each 4 bytes of the array on corresponding addresses.
+            while chunk := encoded[range_start:range_end]:
+                with self.line():
+                    self.put(f"{addr:04X}")
+                    s = " ".join(f"{i:02X}" for i in chunk)
+                    self.put(s)
+                    range_start, range_end = range_end, range_end + self.bytes_per_line
+                    addr += len(chunk)
 
     def print_label(self, lbl: Label):
         self.put(f"{lbl.name}:")
@@ -1610,7 +1704,7 @@ class Z80AsmPrinter:
     def print_directive(self, d: Directive):
         self.put(f".{d.kind.name}")
         self.print_operands(d.operands)
-        if d.kind == DirectiveKind.db:
+        if d.kind == DirectiveKind.db or d.kind == DirectiveKind.fill:
             # +1 next byte offset
             self.addr += d.length + 1
 
@@ -1663,6 +1757,7 @@ class Z80AsmPrinter:
                 self.put(f'"{s}"')
 
         dct = {
+            OperandKind.Int: lambda op: self.put(f"0x{op.value:0{op.length * 2}X}"),
             OperandKind.Int8: lambda op: self.put(f"0x{op.value:02X}"),
             OperandKind.Int16: lambda op: self.put(f"0x{op.value:04X}"),
             OperandKind.IX: lambda op: self.put("ix"),
@@ -1773,6 +1868,21 @@ class Z80AsmCompiler:
                 elif isinstance(op.value, int):
                     op_bytes.append(op.value)
             d.encoded = tuple(op_bytes)
+        elif d.kind == DirectiveKind.fill:
+            op_bytes = []
+            if len(d.operands) == 2:
+                count, string = d.operands
+                s_repr = tuple(ord(i) for i in string.value)
+                for i in range(count.value):
+                    op_bytes.extend(s_repr)
+            elif len(d.operands) == 3:
+                count, size, val = d.operands
+                tup = self.itotup(val.value, size.value)
+                for i in range(count.value):
+                    op_bytes.extend(tup)
+            else:
+                assert_never(d)
+            d.encoded = tuple(op_bytes)
 
     @lru_cache(maxsize=1)
     def _construct_operand_dispatch_dict(self):
@@ -1849,6 +1959,19 @@ class Z80AsmCompiler:
         """Convert register pair to its integer representation"""
         return self.REGPAIRS[regp]
 
+    def itotup(self, i: int, size: Optional[int] = None) -> tuple[int, ...]:
+        """Convert integer to a tuple of 8-bit integers and optionally pad it to the given size
+
+        Resulting tuple of bytes is little-endian, i.e. the least significant byte comes first.
+        """
+        lst = []
+        while i:
+            lst.append(i & 0xff)
+            i = i >> 8
+        if size is not None and len(lst) < size:
+            lst.extend(0x00 for _ in range(size - len(lst)))
+        return tuple(lst)
+
     def error(self, stmt: Optional[Statement], message: str, *args):
         stream = StringIO()
         print(f"error: {message.format(*args)}", file=stream)
@@ -1879,8 +2002,8 @@ if __name__ == "__main__":
             compiler.compile_program()
             printer.print_program(asm.instructions)
 
-            bstream = BytesIO()
-            compiler.emit_bytes(bstream)
-            print([f"{b:02X}" for b in bstream.getvalue()])
+            # bstream = BytesIO()
+            # compiler.emit_bytes(bstream)
+            # print([f"{b:02X}" for b in bstream.getvalue()])
         except Z80Error as e:
             print(e)
