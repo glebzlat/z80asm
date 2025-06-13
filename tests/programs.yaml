@@ -1,11 +1,10 @@
 # Test format:
-#   - test:
-#       desc: A test description
-#       source: |
-#         An Asm source
-#       expect: |
-#         An expected output lines from the assembler
-#         in the format <hex addr> <hex values>+ ; <mnemonic>
+#   - desc: A test description
+#     source: |
+#       An Asm source
+#     expect: |
+#       An expected output lines from the assembler
+#       in the format <hex addr> <hex values>+ ; <mnemonic>
 
 ---
 tests:
