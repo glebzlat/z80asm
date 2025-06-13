@@ -135,3 +135,18 @@ tests:
       080C 00
       1000              ; .org 0x1000
       1000              ; output:
+
+  - desc: .fill directive
+    source: |
+      .org 0x0010
+          nop
+          nop
+      .fill 8, 1, 0x10
+          nop
+    expect: |
+      0010              ; .org 0x0010
+      0010 00           ;     nop
+      0011 00           ;     nop
+      0012 10 10 10 10  ; .fill 0x0008, 0x01, 0x10
+      0016 10 10 10 10
+      001A 00           ;     nop
