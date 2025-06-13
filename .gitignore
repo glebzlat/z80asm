@@ -62,3 +62,6 @@ __pycache__/
 
 # Virtual environment
 .env
+
+# The file where I write commit messages
+commit.msg
