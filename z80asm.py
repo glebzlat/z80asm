@@ -592,12 +592,20 @@ class Z80AsmParser:
             _("RL"): {
                 (REG,): D(2, lambda r: (0xcb, 0x10 | r)),
                 (AHL,): (0xcb, 0x16),
+
+                (IXD, REG): U(D(4, lambda d, r: (0xdd, 0xcb, d, 0x10 | r))),
+                (IYD, REG): U(D(4, lambda d, r: (0xfd, 0xcb, d, 0x10 | r))),
+
                 (IXD,): D(4, lambda d: (0xdd, 0xcb, d, 0x16)),
                 (IYD,): D(4, lambda d: (0xfd, 0xcb, d, 0x16)),
             },
             _("RRC"): {
                 (REG,): D(2, lambda r: (0xcb, 0x08 | r)),
                 (AHL,): (0xcb, 0x0e),
+
+                (IXD, REG): U(D(4, lambda d, r: (0xdd, 0xcb, d, 0x08 | r))),
+                (IYD, REG): U(D(4, lambda d, r: (0xfd, 0xcb, d, 0x08 | r))),
+
                 (IXD,): D(4, lambda d: (0xdd, 0xcb, d, 0x0e)),
                 (IYD,): D(4, lambda d: (0xfd, 0xcb, d, 0x0e)),
             },
@@ -605,24 +613,40 @@ class Z80AsmParser:
                 # XXX: RR reg and RRC reg opcodes are the same??
                 (REG,): D(2, lambda r: (0xcb, 0x08 | r)),
                 (AHL,): (0xcb, 0x1e),
+
+                (IXD, REG): U(D(4, lambda d, r: (0xdd, 0xcb, d, 0x18 | r))),
+                (IYD, REG): U(D(4, lambda d, r: (0xfd, 0xcb, d, 0x18 | r))),
+
                 (IXD,): D(4, lambda d: (0xdd, 0xcb, d, 0x1e)),
                 (IYD,): D(4, lambda d: (0xfd, 0xcb, d, 0x1e)),
             },
             _("SLA"): {
                 (REG,): D(2, lambda r: (0xcb, 0x20 | r)),
                 (AHL,): (0xcb, 0x26),
+
+                (IXD, REG): U(D(4, lambda d, r: (0xdd, 0xcb, d, 0x20 | r))),
+                (IYD, REG): U(D(4, lambda d, r: (0xfd, 0xcb, d, 0x20 | r))),
+
                 (IXD,): D(4, lambda d: (0xdd, 0xcb, d, 0x26)),
                 (IYD,): D(4, lambda d: (0xfd, 0xcb, d, 0x26)),
             },
             _("SRA"): {
                 (REG,): D(2, lambda r: (0xcb, 0x28 | r)),
                 (AHL,): (0xcb, 0x2e),
+
+                (IXD, REG): U(D(4, lambda d, r: (0xdd, 0xcb, d, 0x28 | r))),
+                (IYD, REG): U(D(4, lambda d, r: (0xfd, 0xcb, d, 0x28 | r))),
+
                 (IXD,): D(4, lambda d: (0xdd, 0xcb, d, 0x2e)),
                 (IYD,): D(4, lambda d: (0xfd, 0xcb, d, 0x2e)),
             },
             _("SRL"): {
                 (REG,): D(2, lambda r: (0xcb, 0x38 | r)),
                 (AHL,): (0xcb, 0x3e),
+
+                (IXD, REG): U(D(4, lambda d, r: (0xdd, 0xcb, d, 0x38 | r))),
+                (IYD, REG): U(D(4, lambda d, r: (0xfd, 0xcb, d, 0x38 | r))),
+
                 (IXD,): D(4, lambda d: (0xdd, 0xcb, d, 0x3e)),
                 (IYD,): D(4, lambda d: (0xfd, 0xcb, d, 0x3e)),
             },
@@ -650,6 +674,10 @@ class Z80AsmParser:
             _("RES"): {
                 (BIT, REG): D(2, lambda b, r: (0xcb, 0x80 | (b << 3) | r)),
                 (BIT, AHL): D(2, lambda b, _: (0xcb, 0x86 | (b << 3))),
+
+                (BIT, IXD, REG): U(D(4, lambda b, d, r: (0xdd, 0xcb, d, 0x80 | (b << 3) | r))),
+                (BIT, IYD, REG): U(D(4, lambda b, d, r: (0xfd, 0xcb, d, 0x80 | (b << 3) | r))),
+
                 (BIT, IXD): D(4, lambda b, d: (0xdd, 0xcb, d, 0x86 | (b << 3))),
                 (BIT, IYD): D(4, lambda b, d: (0xfd, 0xcb, d, 0x86 | (b << 3))),
             },
