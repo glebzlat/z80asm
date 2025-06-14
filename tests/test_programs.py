@@ -16,16 +16,16 @@ def compile_format(source: str) -> str:
     istream, ostream = StringIO(source), StringIO()
 
     parser = Z80AsmParser()
-    parser.parse_stream(istream)
+    program = parser.parse_stream(istream)
 
-    ltr = Z80AsmLayouter(parser.instructions)
-    ltr.layout_program()
+    ltr = Z80AsmLayouter()
+    ltr.layout_program(program)
 
-    compiler = Z80AsmCompiler(parser.instructions)
-    compiler.compile_program()
+    compiler = Z80AsmCompiler()
+    compiler.compile_program(program)
 
     printer = Z80AsmPrinter(ostream, replace_names=True)
-    printer.print_program(parser.instructions)
+    printer.print_program(program)
 
     return ostream.getvalue()
 

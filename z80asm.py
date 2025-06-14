@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import re
 import sys
+import os
 
 from functools import wraps
 from typing import Optional, Callable, Any, TextIO, BinaryIO, Generator
-from io import StringIO, BytesIO
+from io import StringIO
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from contextlib import contextmanager
@@ -20,6 +21,13 @@ else:
     def assert_never(arg: Any = None):
         append = f": {arg}" if arg is not None else ""
         raise ValueError(f"unreachable{append!r}")
+
+
+class Sysexits(Enum):
+    EX_OK = 0
+    EX_USAGE = 64
+    EX_DATAERR = 65
+    EX_CANTCREAT = 73
 
 
 class OperandKind(Enum):
@@ -807,13 +815,13 @@ class Z80AsmParser:
         self.instructions: list[Statement] = []
         self.errors = []
 
-    def parse_file(self, file: str):
+    def parse_file(self, file: str) -> list[Statement]:
         # breakpoint()
         self.current_filename = file
         with open(file, "r", encoding="UTF-8") as fin:
-            self.parse_stream(fin)
+            return self.parse_stream(fin)
 
-    def parse_stream(self, stream: TextIO):
+    def parse_stream(self, stream: TextIO) -> list[Statement]:
         if getattr(self, "current_filename", None) is None:
             self.current_filename = "<stream>"
         for line in stream:
@@ -843,6 +851,7 @@ class Z80AsmParser:
                 self.expects.clear()
         if self.errors:
             raise Z80Error(*self.errors)
+        return self.instructions
 
     def print_instructions(self, stream: TextIO):
         for i in self.instructions:
@@ -1486,8 +1495,8 @@ class Z80AsmParser:
 
 class Z80AsmLayouter:
 
-    def __init__(self, program: list[Statement]):
-        self.program = program
+    def __init__(self):
+        self.program: list[Statement]
         self.errors: list[Z80Error] = []
 
         self.addr = 0
@@ -1496,7 +1505,8 @@ class Z80AsmLayouter:
         self.consts: dict[str, int] = {}
         self.const_refs: list[Operand] = []
 
-    def layout_program(self):
+    def layout_program(self, program: list[Statement]):
+        self.program = program
         for i, inst in enumerate(self.program):
             self.layout_instruction(i, inst)
         self.assign_label_addrs()
@@ -1867,11 +1877,12 @@ class Z80AsmCompiler:
         0x38: 0b111
     }
 
-    def __init__(self, program: list[Statement]):
-        self.program = program
+    def __init__(self):
+        self.program: list[Statement]
         self.errors: list[Z80Error] = []
 
-    def compile_program(self):
+    def compile_program(self, program: list[Statement]):
+        self.program = program
         for stmt in self.program:
             self.compile_statement(stmt)
         if self.errors:
@@ -2011,27 +2022,67 @@ class Z80AsmCompiler:
         self.errors.append(Z80Error(stream.getvalue()))
 
 
-if __name__ == "__main__":
+def main() -> Sysexits:
     from argparse import ArgumentParser
 
     argparser = ArgumentParser()
-    argparser.add_argument("inputs", metavar="INPUT", nargs="*")
+    argparser.add_argument("inputs", metavar="INPUT", nargs="+", help="Input files")
+    argparser.add_argument("--output", "-o", metavar="OUTPUT", default="-",
+                           help="Output file; by default print listing to stdout")
+    argparser.add_argument("--format", "-f", choices=["bin", "lst"], default="bin",
+                           help="Output format; if --output not specified, defaults to lst")
 
-    ns = argparser.parse_args()
+    ns, args = argparser.parse_known_args()
+    if args:
+        argparser.print_usage(sys.stderr)
+        print("Unrecognized arguments:", " ".join(args))
+        return Sysexits.EX_USAGE
 
     asm = Z80AsmParser()
-    ltr = Z80AsmLayouter(asm.instructions)
-    compiler = Z80AsmCompiler(program=asm.instructions)
-    printer = Z80AsmPrinter(file=sys.stdout)
     for i in ns.inputs:
         try:
             asm.parse_file(i)
-            ltr.layout_program()
-            compiler.compile_program()
-            printer.print_program(asm.instructions)
-
-            # bstream = BytesIO()
-            # compiler.emit_bytes(bstream)
-            # print([f"{b:02X}" for b in bstream.getvalue()])
         except Z80Error as e:
-            print(e)
+            print(e, file=sys.stderr)
+            return Sysexits.EX_DATAERR
+    program = asm.instructions
+
+    printer = None
+    if ns.output == "-":
+        output = None
+        ns.format = "lst"
+        printer = Z80AsmPrinter(sys.stdout)
+    elif ns.output:
+        output = ns.output
+    elif ns.format == "lst":
+        output = "a.lst"
+    elif ns.format == "bin":
+        output = "a.bin"
+
+    if output is not None and os.path.isdir(output):
+        print("Cannot create file {output}: there is a directory with the same name", file=sys.stderr)
+        return Sysexits.EX_CANTCREAT
+
+    ltr = Z80AsmLayouter()
+    ltr.layout_program(program)
+
+    compiler = Z80AsmCompiler()
+    compiler.compile_program(program)
+
+    if ns.format == "bin":
+        with open(output, "wb") as fout:
+            compiler.emit_bytes(fout)
+
+    elif ns.format == "lst":
+        if printer is not None:
+            printer.print_program(program)
+        else:
+            with open(output, "w") as fout:
+                printer = Z80AsmPrinter(fout)
+                printer.print_program(program)
+
+    return Sysexits.EX_OK
+
+
+if __name__ == "__main__":
+    sys.exit(main().value)

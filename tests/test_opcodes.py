@@ -14,13 +14,13 @@ def compile_asm(source: str, undoc: bool) -> tuple[int, ...]:
     parser = Z80AsmParser(undoc_instructions=undoc)
 
     stream = StringIO(source)
-    parser.parse_stream(stream)
+    program = parser.parse_stream(stream)
 
-    ltr = Z80AsmLayouter(parser.instructions)
-    ltr.layout_program()
+    ltr = Z80AsmLayouter()
+    ltr.layout_program(program)
 
-    compiler = Z80AsmCompiler(parser.instructions)
-    compiler.compile_program()
+    compiler = Z80AsmCompiler()
+    compiler.compile_program(program)
 
     return tuple(compiler.encode())
 
