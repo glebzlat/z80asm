@@ -1538,8 +1538,12 @@ class Z80AsmLayouter:
             inst.addr = self.addr
             self.addr += inst.length
 
+            if inst.opcode in (Opcode.JR, Opcode.DJNZ):
+                self.layout_rel_jump(inst)
+                return
+
             for op in inst.operands:
-                if op.kind in (OperandKind.AbsLabel, OperandKind.RelLabel):
+                if op.kind == OperandKind.AbsLabel:
                     self.label_refs.append((op, inst))
                 elif op.kind == OperandKind.Const:
                     self.const_refs.append(op)
@@ -1572,6 +1576,25 @@ class Z80AsmLayouter:
         d.addr = self.addr
         self.addr += d.length
 
+    def layout_rel_jump(self, inst: Instruction):
+        """Layout JR and DJNZ instructions.
+
+        From the Z80 CPU User Manual:
+
+            The jump is measured from the address of the instruction op code and is within range
+            of -126 to +129 bytes. The assembler automatically adjusts for the twice incremented PC.
+
+        Thus we need to ensure that the offset (label.addr - inst.addr) or user supplied integer
+        is within the range.
+        """
+        for op in inst.operands:
+            if op.kind == OperandKind.RelLabel:
+                self.label_refs.append((op, inst))
+                break
+            elif op.kind == OperandKind.Int8:
+                if op.value > 129 or op.value < -126:
+                    self.error("relative jump is outside the range -126 to +129 bytes", op)
+
     def assign_label_addrs(self):
         for idx, label in self.labels.items():
             if (addr := self.get_next_addr(idx, self.program)) is not None:
@@ -1593,12 +1616,14 @@ class Z80AsmLayouter:
         labels = {label.name: label.addr for label in self.labels.values()}
         for op, inst in self.label_refs:
             if (addr := labels.get(op.value)) is not None:
-                if op.kind == OperandKind.RelLabel:
-                    addr -= inst.addr
-                    if addr > 129 or addr < -126:
-                        self.error("label outside relative jump range")
                 op.name = op.value
-                op.value = addr
+                if op.kind == OperandKind.RelLabel:
+                    offset = addr - inst.addr
+                    if offset > 129 or offset < -126:
+                        self.error("label outside the relative jump range -126 to +129 bytes", op)
+                    op.value = offset
+                else:
+                    op.value = addr
             else:
                 self.error("reference to an undefined label {}", op, op.value)
 
