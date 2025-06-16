@@ -2063,23 +2063,27 @@ def main() -> Sysexits:
         print("Cannot create file {output}: there is a directory with the same name", file=sys.stderr)
         return Sysexits.EX_CANTCREAT
 
-    ltr = Z80AsmLayouter()
-    ltr.layout_program(program)
+    try:
+        ltr = Z80AsmLayouter()
+        ltr.layout_program(program)
 
-    compiler = Z80AsmCompiler()
-    compiler.compile_program(program)
+        compiler = Z80AsmCompiler()
+        compiler.compile_program(program)
 
-    if ns.format == "bin":
-        with open(output, "wb") as fout:
-            compiler.emit_bytes(fout)
+        if ns.format == "bin":
+            with open(output, "wb") as fout:
+                compiler.emit_bytes(fout)
 
-    elif ns.format == "lst":
-        if printer is not None:
-            printer.print_program(program)
-        else:
-            with open(output, "w") as fout:
-                printer = Z80AsmPrinter(fout)
+        elif ns.format == "lst":
+            if printer is not None:
                 printer.print_program(program)
+            else:
+                with open(output, "w") as fout:
+                    printer = Z80AsmPrinter(fout)
+                    printer.print_program(program)
+    except Z80Error as e:
+        print(e)
+        return Sysexits.EX_DATAERR
 
     return Sysexits.EX_OK
 
