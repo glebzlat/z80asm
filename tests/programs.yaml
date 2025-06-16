@@ -87,6 +87,40 @@ tests:
       047F 00           ;     nop
       0480 38 FA        ;     jr     c, -4
 
+  - desc: |
+      Relative jump -126 to +129 bytes - positive
+    source: |
+      .org 0x0000
+          jr c, label
+      .fill 127, 1, 0x0
+      label:
+          nop
+    expect: |
+      0000              ; .org 0x0000
+      0000 38 7F        ;     jr     c, +129
+      0002 00 00 00 00  ; .fill 0x007F, 0x01, 0x00
+      0006 00 00 00 00
+      000A <115 bytes>
+      007D 00 00 00 00
+      0081              ; label:
+      0081 00           ;     nop
+
+  - desc: |
+      Relative jump -126 to +129 bytes - negative
+    source: |
+      .org 0x0000
+      label:
+      .fill 126, 1, 0x0
+          jr c, label
+    expect: |
+      0000              ; .org 0x0000
+      0000              ; label:
+      0000 00 00 00 00  ; .fill 0x007E, 0x01, 0x01
+      0004 00 00 00 00
+      0008 <114 bytes>
+      007A 00 00 00 00
+      007E 38 80        ;     jr     c, -126
+
   - desc: Relative labels and .db directive (changed example from doc)
     source: |
       .org 0x0010
