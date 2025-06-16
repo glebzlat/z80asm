@@ -253,6 +253,8 @@ jr c, 0x10; 38 0E
 jr nc, 0x10; 30 0E
 jr z, 0x10; 28 0E
 jr nz, 0x10; 20 0E
+jr 129; 18 7F
+jr -126; 18 80
 jp (hl); E9
 jp (ix); DD E9
 jp (iy); FD E9
