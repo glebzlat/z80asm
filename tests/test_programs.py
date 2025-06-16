@@ -6,7 +6,7 @@ import yaml
 from io import StringIO
 from typing import IO, Text, Optional
 
-from z80asm import Z80AsmParser, Z80AsmLayouter, Z80AsmCompiler, Z80AsmPrinter
+from z80asm import Z80AsmParser, Z80AsmLayouter, Z80AsmCompiler, Z80AsmPrinter, Z80Error
 
 
 FILE = "tests/programs.yaml"
@@ -47,7 +47,12 @@ class TestPrograms(unittest.TestCase):
             for test in data["tests"]:
                 desc = test["desc"]
                 expected = test["expect"].splitlines(keepends=True)
-                encoded = compile_format(test["source"]).splitlines(keepends=True)
+                try:
+                    encoded = compile_format(test["source"]).splitlines(keepends=True)
+                except Z80Error as e:
+                    lineno = try_get_lineno(fin, desc)
+                    lineno = f"{lineno}:" if lineno is not None else ""
+                    raise AssertionError(f"{FILE}:{lineno}: Test failed: {desc}") from e
                 if expected != encoded:
                     diff = "".join(difflib.ndiff(expected, encoded))
                     print(diff)
