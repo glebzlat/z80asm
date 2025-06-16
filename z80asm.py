@@ -6,13 +6,14 @@ import sys
 import os
 
 from functools import wraps
-from typing import Optional, Callable, Any, TextIO, BinaryIO, Generator
+from typing import Optional, Callable, Any, TextIO, BinaryIO, Generator, Protocol
 from io import StringIO
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from contextlib import contextmanager
 from functools import lru_cache
 from itertools import repeat
+from abc import abstractmethod
 
 
 if sys.version_info[:3] >= (3, 11, 0):
@@ -135,6 +136,7 @@ class DirectiveKind(Enum):
     equ = auto()
     db = auto()
     fill = auto()
+    include = auto()
 
 
 @dataclass
@@ -782,7 +784,8 @@ class Z80AsmParser:
             "equ": [(self.parse_const, self.parse_i8_op)],
             "db": [(self.parse_byte_sequence,)],
             "fill": [(self.parse_i16_op, self.parse_i8_op, self.parse_int_op),
-                     (self.parse_i16_op, self.parse_string)]
+                     (self.parse_i16_op, self.parse_string)],
+            "include": [(self.parse_string,)]
         }
 
         # Used by parse_char
@@ -793,10 +796,11 @@ class Z80AsmParser:
             "0": "\0"
         }
 
-    def __init__(self, undoc_instructions: bool = False):
+    def __init__(self, undoc_instructions: bool = False, path_finder: Optional[PathFinderProtocol] = None):
         self.definitions()
 
         self.undoc_instructions = undoc_instructions
+        self.path_finder = path_finder
 
         # Memo table used for backtracking.
         self.memos = {}
@@ -945,7 +949,11 @@ class Z80AsmParser:
 
                 directive_kind = DirectiveKind[name]
                 directive = self.parseinfo(Directive(directive_kind, args), pos)
-                self.instructions.append(directive)
+
+                if directive.kind == DirectiveKind.include:
+                    self.include_file(directive)
+                else:
+                    self.instructions.append(directive)
 
                 return True
         return False
@@ -969,6 +977,22 @@ class Z80AsmParser:
             else:
                 return None
         return args
+
+    def include_file(self, d: Directive):
+        """Recursively parse and merge Assembly source file"""
+        if self.path_finder is None:
+            raise RuntimeError("could not process .include: no path_finder")
+        path = d.operands[0].value
+        if (file := self.path_finder.find(path)) is not None:
+            parser = Z80AsmParser(undoc_instructions=self.undoc_instructions, path_finder=self.path_finder)
+            parser.current_filename = file
+            with self.path_finder.get_stream(file) as istr:
+                parser.parse_stream(istr)
+            self.instructions.extend(parser.instructions)
+            self.errors.extend(parser.errors)
+        else:
+            self.reset(path.column)
+            self.error("file not found")
 
     @memoize
     def parse_label(self) -> Optional[Label]:
@@ -1491,6 +1515,36 @@ class Z80AsmParser:
         obj.line = self.current_line
         obj.filename = self.current_filename
         return obj
+
+
+class PathFinderProtocol(Protocol):
+
+    @abstractmethod
+    def find(self, path: str) -> Optional[str]:
+        raise NotImplementedError
+
+    @contextmanager
+    @abstractmethod
+    def get_stream(self, path: str) -> Generator[TextIO, None, None]:
+        raise NotImplementedError
+
+
+class Z80AsmFSPathFinder:
+
+    def __init__(self, paths: list[str]):
+        self.paths = [p for p in paths if os.path.exists(p) and os.path.isdir(p)]
+
+    def find(self, path: str) -> Optional[str]:
+        for p in self.paths:
+            res = os.path.join(p, path)
+            if os.path.exists(res) and os.path.isfile(res):
+                return res
+        return None
+
+    @contextmanager
+    def get_stream(self, path: str) -> Generator[TextIO, None, None]:
+        with open(path, "r", encoding="UTF-8") as fin:
+            yield fin
 
 
 class Z80AsmLayouter:
@@ -2056,6 +2110,8 @@ def main() -> Sysexits:
                            help="Output file; by default print listing to stdout")
     argparser.add_argument("--format", "-f", choices=["bin", "lst"], default="bin",
                            help="Output format; if --output not specified, defaults to lst")
+    argparser.add_argument("-I", action="append", dest="include_paths", metavar="INCLUDE",
+                           help="Add include directory", default=[])
 
     ns, args = argparser.parse_known_args()
     if args:
@@ -2063,7 +2119,8 @@ def main() -> Sysexits:
         print("Unrecognized arguments:", " ".join(args))
         return Sysexits.EX_USAGE
 
-    asm = Z80AsmParser()
+    path_finder = Z80AsmFSPathFinder(ns.include_paths)
+    asm = Z80AsmParser(path_finder=path_finder)
     for i in ns.inputs:
         try:
             asm.parse_file(i)
