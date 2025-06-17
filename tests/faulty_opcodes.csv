@@ -1,0 +1,4 @@
+instruction
+ld fdfd, a
+jr -127
+jr 130

@@ -3,11 +3,12 @@ import csv
 
 from io import StringIO
 
-from z80asm import Z80AsmParser, Z80AsmLayouter, Z80AsmCompiler
+from z80asm import Z80AsmParser, Z80AsmLayouter, Z80AsmCompiler, Z80Error
 
 
 DOC_FILE = 'tests/opcodes.csv'
 UNDOC_FILE = 'tests/undoc_opcodes.csv'
+FAULTY_DOC_FILE = 'tests/faulty_opcodes.csv'
 
 
 def compile_asm(source: str, undoc: bool) -> tuple[int, ...]:
@@ -51,8 +52,25 @@ class TestAsm(unittest.TestCase):
                            f"got {tuptohexstr(out_bytes)}")
                     raise AssertionError(msg) from None
 
+    def open_faulty_test_file(self, file: str, undoc: bool):
+        with open(file, "r") as fin:
+            reader = csv.DictReader(fin, delimiter=";", quotechar="|",
+                                    skipinitialspace=True)
+            for lineno, row in enumerate(reader, 2):
+                inst = row["instruction"]
+                try:
+                    compile_asm(inst, undoc=undoc)
+                except Z80Error:
+                    pass
+                else:
+                    msg = (f"{file}:{lineno}: instruction {inst} expected to fail")
+                    raise AssertionError(msg) from None
+
     def test_doc_instruction(self):
         self.open_test_file(DOC_FILE, undoc=False)
 
     def test_undoc_instruction(self):
         self.open_test_file(UNDOC_FILE, undoc=True)
+
+    def test_faulty_doc_instruction(self):
+        self.open_faulty_test_file(FAULTY_DOC_FILE, undoc=False)
