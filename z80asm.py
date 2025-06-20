@@ -2101,7 +2101,16 @@ class Z80AsmCompiler:
         self.errors.append(Z80Error(stream.getvalue()))
 
 
-def main() -> Sysexits:
+def _monkey_patch_argparser_exit(argparser):
+    exit_save = argparser.exit
+
+    def exit(status: int = 0, message: Optional[str] = None):
+        exit_save(Sysexits.EX_USAGE.value, message)
+
+    argparser.exit = exit
+
+
+def _main() -> Sysexits:
     from argparse import ArgumentParser
 
     argparser = ArgumentParser()
@@ -2113,11 +2122,9 @@ def main() -> Sysexits:
     argparser.add_argument("-I", action="append", dest="include_paths", metavar="INCLUDE",
                            help="Add include directory", default=[])
 
-    ns, args = argparser.parse_known_args()
-    if args:
-        argparser.print_usage(sys.stderr)
-        print("Unrecognized arguments:", " ".join(args))
-        return Sysexits.EX_USAGE
+    _monkey_patch_argparser_exit(argparser)
+
+    ns = argparser.parse_args()
 
     path_finder = Z80AsmFSPathFinder(ns.include_paths)
     asm = Z80AsmParser(path_finder=path_finder)
@@ -2170,5 +2177,9 @@ def main() -> Sysexits:
     return Sysexits.EX_OK
 
 
+def main() -> int:
+    return _main().value
+
+
 if __name__ == "__main__":
-    sys.exit(main().value)
+    sys.exit(main())
