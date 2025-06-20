@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -25,3 +25,5 @@ z80asm = "z80asm:main"
 
 [tool.setuptools]
 py-modules = ["z80asm"]
+
+[tool.setuptools_scm]
