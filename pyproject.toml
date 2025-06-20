@@ -4,11 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "z80asm"
-version = "0.0.1"
+dynamic = ["version"]
+requires-python = ">= 3.12.3"
 description = "Z80 Assembler"
 readme = "README.md"
 license = "MIT"
 keywords = ["Z80", "assembler", "asm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "Programming Language :: Python :: 3.12"
+]
+
+[project.urls]
+Homepage = "https://github.com/glebzlat/z80asm"
 
 [project.scripts]
 z80asm = "z80asm:main"
