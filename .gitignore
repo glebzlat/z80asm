@@ -65,3 +65,5 @@ __pycache__/
 
 # The file where I write commit messages
 commit.msg
+
+*.egg-info

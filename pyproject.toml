@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "z80asm"
+version = "0.0.1"
+description = "Z80 Assembler"
+readme = "README.md"
+license = "MIT"
+keywords = ["Z80", "assembler", "asm"]
+
+[project.scripts]
+z80asm = "z80asm:main"
+
+[tool.setuptools]
+py-modules = ["z80asm"]
