@@ -620,8 +620,7 @@ class Z80AsmParser:
                 (IYD,): D(4, lambda d: (0xfd, 0xcb, d, 0x0e)),
             },
             _("RR"): {
-                # XXX: RR reg and RRC reg opcodes are the same??
-                (REG,): D(2, lambda r: (0xcb, 0x08 | r)),
+                (REG,): D(2, lambda r: (0xcb, 0x18 | r)),
                 (AHL,): (0xcb, 0x1e),
 
                 (IXD, REG): U(D(4, lambda d, r: (0xdd, 0xcb, d, 0x18 | r))),

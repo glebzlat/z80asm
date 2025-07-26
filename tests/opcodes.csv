@@ -192,8 +192,8 @@ rrc c; CB 09
 rrc (hl); CB 0E
 rrc (ix-1); DD CB FF 0E
 rrc (iy-1); FD CB FF 0E
-rr c; CB 09
-rr d; CB 0A
+rr c; CB 19
+rr d; CB 1A
 rr (hl); CB 1E
 rr (ix-1); DD CB FF 1E
 rr (iy-1); FD CB FF 1E
