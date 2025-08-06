@@ -184,3 +184,27 @@ tests:
       0012 10 10 10 10  ; .fill 0x0008, 0x01, 0x10
       0016 10 10 10 10
       001A 00           ;     nop
+
+  - desc: "test case for #3"
+    source: |
+      .org 0x0000
+          jp (ix)
+          halt
+      .org 0x1000
+          ld a, 0x10
+          jp (iy)
+          halt
+      .org 0x2000
+          ld b, 0x20
+          halt
+    expect: |
+      0000              ; .org 0x0000
+      0000 DD E9        ;     jp     (ix)
+      0002 76           ;     halt
+      1000              ; .org 0x1000
+      1000 3E 10        ;     ld     a, 0x10
+      1002 FD E9        ;     jp     (iy)
+      1004 76           ;     halt
+      2000              ; .org 0x2000
+      2000 06 20        ;     ld     b, 0x20
+      2002 76           ;     halt

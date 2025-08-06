@@ -164,6 +164,10 @@ class Operand(ParseInfo):
             return f"{self.kind.name}:{self.value}"
         return self.kind.name
 
+    def __post_init__(self):
+        if self.value is None:
+            self.value = self.kind.name.lower()
+
 
 @dataclass
 class Instruction(ParseInfo):
@@ -1876,8 +1880,6 @@ class Z80AsmPrinter:
             OperandKind.Int: lambda op: self.put(f"0x{op.value:0{op.length * 2}X}"),
             OperandKind.Int8: lambda op: self.put(f"0x{op.value:02X}"),
             OperandKind.Int16: lambda op: self.put(f"0x{op.value:04X}"),
-            OperandKind.IX: lambda op: self.put("ix"),
-            OperandKind.IY: lambda op: self.put("iy"),
             OperandKind.Addr: handle_addr_op,
             OperandKind.IXDAddr: lambda op: self.put(f"(ix{op.value:+})"),
             OperandKind.IYDAddr: lambda op: self.put(f"(iy{op.value:+})"),
@@ -1886,10 +1888,6 @@ class Z80AsmPrinter:
             OperandKind.Const: handle_label_op,
             OperandKind.Char: handle_char_op,
             OperandKind.String: handle_string_op,
-            OperandKind.IXH: lambda op: self.put("ixh"),
-            OperandKind.IXL: lambda op: self.put("ixl"),
-            OperandKind.IYH: lambda op: self.put("iyh"),
-            OperandKind.IYL: lambda op: self.put("iyl"),
         }
 
         return dct
@@ -2037,8 +2035,8 @@ class Z80AsmCompiler:
                 if (handler := dispatch_dict.get(op.kind)) is not None:
                     args.append(handler(op))
                 else:
-                    assert isinstance(op.value, int) or op.value is None
-                    args.append(op.value)
+                    value = op.value if isinstance(op.value, int) else None
+                    args.append(value)
             op_bytes = inst.op_bytes(*args)
             assert isinstance(op_bytes, tuple)
             assert all(b.bit_length() <= 8 for b in op_bytes)
