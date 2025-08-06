@@ -208,3 +208,25 @@ tests:
       2000              ; .org 0x2000
       2000 06 20        ;     ld     b, 0x20
       2002 76           ;     halt
+
+  - desc: "test case for #1"
+    source: |
+      .org 0x0000
+          jr 0x20
+          halt
+      .org 0x0010
+          ld a, 0x20
+          halt
+      .org 0x0020
+          jr -0x10
+          halt
+    expect: |
+      0000              ; .org 0x0000
+      0000 18 1E        ;     jr     0x20
+      0002 76           ;     halt
+      0010              ; .org 0x0010
+      0010 3E 20        ;     ld     a, 0x20
+      0012 76           ;     halt
+      0020              ; .org 0x0020
+      0020 18 EE        ;     jr     -0x10
+      0022 76           ;     halt

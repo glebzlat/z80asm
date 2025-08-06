@@ -222,6 +222,14 @@ def isiterable(obj: object) -> bool:
     return getattr(obj, "__iter__", None) is not None
 
 
+def hexstr(n: int, width: int) -> str:
+    s = ""
+    if n < 0:
+        s += "-"
+        n = -n
+    return s + f"0x{n:0{width}X}"
+
+
 def memoize(fn: Callable):
     """Packrat parser memoize wrapper"""
 
@@ -1577,7 +1585,8 @@ class Z80AsmLayouter:
             if inst.kind == DirectiveKind.org:
                 addr = inst.operands[0].value
                 if self.addr > addr:
-                    self.error(f"org directive address 0x{addr:04X} is behind current address 0x{self.addr:04X}", inst)
+                    self.error(f"org directive address {hexstr(addr, 4)} "
+                               f"is behind current address {hexstr(self.addr, 4)}", inst)
                 self.addr = inst.operands[0].value
                 inst.addr = self.addr
             elif inst.kind == DirectiveKind.equ:
@@ -1849,11 +1858,11 @@ class Z80AsmPrinter:
             if isinstance(op.value, str):
                 self.put(f"({op.value})")
             else:
-                self.put(f"(0x{op.value:04X})")
+                self.put(f"({hexstr(op.value, 4)})")
 
         def handle_label_op(op):
             if self.replace_names:
-                self.put(f"0x{op.value:04X}")
+                self.put(hexstr(op.value, 4))
             else:
                 self.put(op.name)
 
@@ -1865,21 +1874,21 @@ class Z80AsmPrinter:
 
         def handle_char_op(op):
             if self.interpret_literals:
-                self.put(f"0x{ord(op.value):02X}")
+                self.put(hexstr(ord(op.value), 2))
             else:
                 self.put(f"'{self.esc_char(op.value)}'")
 
         def handle_string_op(op):
             if self.interpret_literals:
-                self.put(" ".join(f"0x{ord(c):02X}" for c in op.value))
+                self.put(" ".join(hexstr(ord(c), 2) for c in op.value))
             else:
                 s = "".join(self.esc_char(c) for c in op.value)
                 self.put(f'"{s}"')
 
         dct = {
-            OperandKind.Int: lambda op: self.put(f"0x{op.value:0{op.length * 2}X}"),
-            OperandKind.Int8: lambda op: self.put(f"0x{op.value:02X}"),
-            OperandKind.Int16: lambda op: self.put(f"0x{op.value:04X}"),
+            OperandKind.Int: lambda op: self.put(hexstr(op.value, op.length * 2)),
+            OperandKind.Int8: lambda op: self.put(hexstr(op.value, 2)),
+            OperandKind.Int16: lambda op: self.put(hexstr(op.value, 4)),
             OperandKind.Addr: handle_addr_op,
             OperandKind.IXDAddr: lambda op: self.put(f"(ix{op.value:+})"),
             OperandKind.IYDAddr: lambda op: self.put(f"(iy{op.value:+})"),
