@@ -902,7 +902,7 @@ class Z80AsmParser:
                     else:
                         byte_len, op_bytes = len(data), data
                     opcode = Opcode[mnemonic.upper()]
-                    instr = Instruction(opcode, args, op_bytes=op_bytes, length=byte_len)
+                    instr = self.parseinfo(Instruction(opcode, args, op_bytes=op_bytes, length=byte_len), start)
                     self.instructions.append(instr)
                     if not self.eol():
                         # Expect that there is nothing left on the line
