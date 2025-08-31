@@ -1587,7 +1587,8 @@ class Z80AsmLayouter:
                 if self.addr > addr:
                     self.error(f"org directive address {hexstr(addr, 4)} "
                                f"is behind current address {hexstr(self.addr, 4)}", inst)
-                self.addr = inst.operands[0].value
+                inst.length = self.addr
+                self.addr = addr
                 inst.addr = self.addr
             elif inst.kind == DirectiveKind.equ:
                 self.add_const(inst)
