@@ -250,6 +250,11 @@ def memoize(fn: Callable):
 
 class Z80Error(Exception):
 
+    def __init__(self, *args: Any, line: Optional[int] = None, column: Optional[int] = None):
+        super().__init__(*args)
+        self.line = line
+        self.column = column
+
     def __str__(self) -> str:
         stream = StringIO()
         for err in self.args:
@@ -855,7 +860,7 @@ class Z80AsmParser:
                 if not self.parse_directive() and not self.parse_instruction():
                     self.error("syntax error")
             except Z80Error as e:
-                self.errors.append(e.args[0])
+                self.errors.append(e)
                 continue
             finally:
                 # Memo table and expects are cleared for each line. This
@@ -1494,7 +1499,7 @@ class Z80AsmParser:
         print(f"at: {self.current_filename}:{self.lineno}:{col}", file=stream)
         print(self.current_line, file=stream)
         print(f"{' ' * col}^", file=stream)
-        raise Z80Error(stream.getvalue())
+        raise Z80Error(stream.getvalue(), line=self.lineno, column=col)
 
     def error_from_last_expect(self):
         """Raise an error for the farthest parsed position"""
