@@ -735,7 +735,9 @@ class Z80AsmParser:
             },
             _("CALL"): {
                 (I16,): D(3, lambda n: (0xcd, n[0], n[1])),
-                (CFF, I16): D(3, lambda f, n: (0xc4 | (f << 3), n[0], n[1]))
+                (CFF, I16): D(3, lambda f, n: (0xc4 | (f << 3), n[0], n[1])),
+                (LBLA,): D(3, lambda n: (0xcd, n[0], n[1])),
+                (CFF, LBLA): D(3, lambda f, n: (0xc4 | (f << 3), n[0], n[1]))
             },
             _("RET"): {
                 (CFF,): D(1, lambda f: (0xc0 | (f << 3),)),
